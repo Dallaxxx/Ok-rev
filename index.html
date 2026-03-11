@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Revision Tracker</title>
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Pie Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- HTML2PDF for PDF Exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Authentication Container (Login/Signup) -->
+    <div id="auth-container" class="auth-container">
+        <div class="auth-box">
+            <h1 class="app-title"><i class="fa-solid fa-brain"></i> Revision Tracker</h1>
+            <p class="app-subtitle">Master your syllabus with spaced repetition.</p>
+            
+            <div class="auth-tabs">
+                <button class="tab-btn active" id="tab-login">Login</button>
+                <button class="tab-btn" id="tab-signup">Sign Up</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active">
+                <div class="input-group">
+                    <label>Name</label>
+                    <input type="text" id="login-name" required placeholder="Enter your name">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" required placeholder="Enter your password">
+                </div>
+                <div class="error-msg" id="login-error"></div>
+                <button type="submit" class="primary-btn">Login</button>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signup-form" class="auth-form">
+                <div class="input-group">
+                    <label>Name</label>
+                    <input type="text" id="signup-name" required placeholder="Choose a username">
+                </div>
+                <div class="input-group">
+                    <label>Age</label>
+                    <input type="number" id="signup-age" required placeholder="Your age">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="signup-password" required placeholder="Create a password">
+                </div>
+                <div class="error-msg" id="signup-error"></div>
+                <button type="submit" class="primary-btn">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application Container (Hidden until logged in) -->
+    <div id="app-container" class="app-container hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fa-solid fa-brain text-gradient"></i> Tracker</h2>
+            </div>
+            
+            <div class="user-profile">
+                <div class="avatar"><i class="fa-solid fa-user"></i></div>
+                <div class="user-info">
+                    <span id="display-name" class="name">User</span>
+                    <span id="display-age" class="age">Age: 18</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-btn active" data-view="dashboard"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
+                <button class="nav-btn" data-view="syllabus"><i class="fa-solid fa-book-open"></i> My Syllabus</button>
+                <button class="nav-btn" data-view="mindmap"><i class="fa-solid fa-network-wired"></i> Mind Map</button>
+                <button class="nav-btn" data-view="revisions"><i class="fa-solid fa-calendar-check"></i> Due Revisions</button>
+                <button class="nav-btn" data-view="tests"><i class="fa-solid fa-file-signature"></i> Tests Planner</button>
+            </nav>
+
+            <div class="theme-controls">
+                <h4 class="theme-title">Theme Settings</h4>
+                
+                <div class="theme-row" style="margin-bottom: 15px;">
+                    <span>Theme Style</span>
+                    <select id="theme-style-selector" class="custom-input" style="width: auto; padding: 4px 8px; font-size: 12px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); border-radius: 4px;">
+                        <option value="light">Light Mode</option>
+                        <option value="dark">Dark Mode</option>
+                        <option value="chatgpt">ChatGPT B&W</option>
+                    </select>
+                </div>
+                
+                <div class="theme-row" id="accent-color-row" style="margin-bottom: 25px;">
+                    <span>Accent Color</span>
+                    <input type="color" id="color-picker" class="color-picker-input">
+                </div>
+
+                <h4 class="theme-title"><i class="fa-brands fa-telegram" style="color:#0088cc;"></i> Telegram Backup</h4>
+                <div class="input-group" style="margin-bottom: 8px;">
+                    <input type="password" id="tg-bot-token" placeholder="Bot Token (e.g. 123:ABC)" style="font-size: 12px; padding: 8px;">
+                </div>
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <input type="text" id="tg-chat-id" placeholder="Chat ID (e.g. 12345678)" style="font-size: 12px; padding: 8px;">
+                </div>
+                <button id="tg-sync-btn" class="secondary-btn w-full tooltip" title="Upload data to your Telegram Bot"><i class="fa-solid fa-cloud-arrow-up"></i> Sync to Cloud</button>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="backup-controls" style="margin-bottom: 10px; display: flex; gap: 5px;">
+                    <button id="export-btn" class="secondary-btn w-full tooltip" title="Download Local JSON"><i class="fa-solid fa-download"></i></button>
+                    <button id="import-btn" class="secondary-btn w-full tooltip" title="Upload Local JSON"><i class="fa-solid fa-upload"></i></button>
+                    <input type="file" id="import-file" accept=".json" class="hidden">
+                </div>
+                <button id="logout-btn" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 id="current-view-title" class="view-title">Dashboard Overview</h2>
+                    <p id="current-view-subtitle" class="text-muted">Track your overall progress and upcoming tasks.</p>
+                </div>
+                <div class="header-actions" style="position: relative;">
+                    <button id="notification-btn" class="icon-btn tooltip" title="Today's Tasks" style="position: relative; font-size: 1.2rem;">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="notification-badge" class="badge" style="position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold; display: none;">0</span>
+                    </button>
+                    <!-- Notification Dropdown -->
+                    <div id="notification-dropdown" class="dropdown-menu shadow-lg" style="display: none; position: absolute; right: 0; top: 100%; width: 320px; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius); z-index: 1000; padding: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; margin-bottom: 10px;">
+                            <h4 style="margin: 0; font-size: 15px;"><i class="fa-solid fa-list-check" style="color:var(--primary);"></i> Today's Action Items</h4>
+                            <button id="close-notifications" class="icon-btn" style="font-size: 12px; padding: 2px 5px;"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div id="notification-list" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Notifications go here -->
+                            <div class="text-muted text-center" style="font-size: 13px; padding: 10px;">All caught up for today!</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dynamic Views Container -->
+            <div id="views-container" class="views-container">
+                
+                <!-- View 1: Dashboard (Charts & Summary) -->
+                <div id="view-dashboard" class="view active">
+                    <div class="dashboard-stats">
+                        <div class="stat-card pending-revisions">
+                            <i class="fa-solid fa-bell"></i>
+                            <div class="stat-info">
+                                <h3>Revisions Due Today</h3>
+                                <span class="stat-value" id="due-count">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-container">
+                        <div class="chart-card">
+                            <h3>Overall Completion</h3>
+                            <div class="chart-wrapper">
+                                <canvas id="overallProgressChart"></canvas>
+                            </div>
+                            <div id="subjectBreakdownContainer" style="margin-top: 15px;"></div>
+                        </div>
+                        <div class="chart-card flow-chart-card">
+                            <h3>Subject Drill-down</h3>
+                            <div class="chart-wrapper" style="position: relative;">
+                                <canvas id="subjectPieChart" style="display: none;"></canvas>
+                                <p id="subjectChartPlaceholder" class="text-muted text-center" style="margin-top: 40px; font-size: 0.9rem;">
+                                    Double-click an Exam slice on the left to view its Subject breakdown.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-container" style="margin-top:20px; gap: 20px; display: grid; grid-template-columns: 1fr 1fr;">
+                        <div class="chart-card flow-chart-card">
+                            <h3>Progress Flow</h3>
+                            <div id="progress-flow-container" class="progress-flow">
+                                <!-- Flow chart will be rendered here via JS -->
+                            </div>
+                        </div>
+                        <div class="chart-card calendar-card" style="display: flex; flex-direction: column;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h3><i class="fa-regular fa-calendar" style="color:var(--primary);"></i> Activity Tracker</h3>
+                                <div style="display: flex; gap: 10px;">
+                                    <button id="cal-prev-month" class="icon-btn tooltip" title="Previous Month" style="font-size: 0.9rem; padding: 4px 8px;"><i class="fa-solid fa-chevron-left"></i></button>
+                                    <span id="cal-month-year" style="font-weight: 600; font-size: 0.95rem; align-self: center; min-width: 100px; text-align: center;">MM YYYY</span>
+                                    <button id="cal-next-month" class="icon-btn tooltip" title="Next Month" style="font-size: 0.9rem; padding: 4px 8px;"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+                            </div>
+                            <div class="calendar-grid-container">
+                                <div class="calendar-grid">
+                                    <div class="cal-day-header">Sun</div><div class="cal-day-header">Mon</div><div class="cal-day-header">Tue</div><div class="cal-day-header">Wed</div><div class="cal-day-header">Thu</div><div class="cal-day-header">Fri</div><div class="cal-day-header">Sat</div>
+                                    <!-- Calendar days injected here -->
+                                    <div id="calendar-days" style="display: contents;"></div>
+                                </div>
+                            </div>
+                            <!-- Day detail popover/section below calendar -->
+                            <div id="cal-day-details" style="margin-top: 15px; padding: 15px; background: var(--bg-main); border-radius: var(--radius); border: 1px solid var(--border-light); flex: 1; display: none;">
+                                <div style="display:flex; justify-content: space-between; margin-bottom: 10px; align-items: center;">
+                                    <h4 id="cal-detail-date" style="margin: 0; font-size: 14px; font-weight: 600;">Selected Date</h4>
+                                    <button id="cal-close-details" class="icon-btn" style="font-size: 12px; padding: 2px 5px;"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                                <div id="cal-detail-content" style="font-size: 13px; max-height: 150px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 2: Syllabus Builder & Tracker -->
+                <div id="view-syllabus" class="view">
+                    <div class="hierarchy-nav">
+                        <!-- Breadcrumbs -->
+                        <div id="breadcrumbs" class="breadcrumbs">
+                            <span class="crumb" data-level="root" data-id="root">All Exams</span>
+                        </div>
+                        <!-- Add New Item Button -->
+                        <button id="add-item-btn" class="secondary-btn"><i class="fa-solid fa-plus"></i> Add New <span id="add-level-text">Exam</span></button>
+                    </div>
+
+                    <!-- List of items (Exams/Subjects/Chapters/Topics) -->
+                    <div id="hierarchy-list" class="hierarchy-list">
+                        <!-- Dynamic Content Inject Here -->
+                    </div>
+                </div>
+
+                <!-- View 3: Mind Map -->
+                <div id="view-mindmap" class="view">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <h3 style="margin:0;"><i class="fa-solid fa-network-wired"></i> Syllabus Architecture</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="mindmap-exam-selector" class="custom-input" style="width: auto; padding: 6px 12px; font-size: 0.9rem;">
+                                <option value="all">All Exams Overview</option>
+                                <!-- Populated dynamically based on user.exams -->
+                            </select>
+                            <select id="mindmap-layout-selector" class="custom-input" style="width: auto; padding: 6px 12px; font-size: 0.9rem;">
+                                <option value="central">Central Radial Map</option>
+                                <option value="logical">Logical Tree Map</option>
+                            </select>
+                            <select id="export-mode" class="custom-input" style="width: auto; padding: 6px 12px; font-size: 0.9rem; font-weight: 600; background: var(--bg-surface); color: var(--primary); border: 1px solid var(--primary);">
+                                <option value="vector-pdf">Vector PDF (1 Page)</option>
+                                <option value="vector-pdf-multi">Vector PDF (Multi-Page)</option>
+                                <option value="vector-svg">Vector SVG</option>
+                            </select>
+                            <button id="download-mindmap-btn" class="primary-btn" style="white-space: nowrap;"><i class="fa-solid fa-download"></i> Download Vector</button>
+                        </div>
+                    </div>
+                    <div class="mindmap-container" id="mindmap-viewport">
+                        <div class="mindmap-controls">
+                            <button id="zoom-in-btn" class="icon-btn tooltip" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                            <button id="zoom-out-btn" class="icon-btn tooltip" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                            <button id="zoom-reset-btn" class="icon-btn tooltip" title="Reset Map"><i class="fa-solid fa-expand"></i></button>
+                        </div>
+                        <div id="mindmap-content" class="mindmap-content" style="transform-origin: 0 0;">
+                            <!-- Mind map nodes injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 4: Due Revisions & Calendar -->
+                <div id="view-revisions" class="view">
+                    
+                    <!-- Advanced Custom Task Builder -->
+                    <div class="card" style="margin-bottom: 30px; background: var(--bg-surface); border: 1px solid var(--border-light); padding: 25px; border-radius: var(--radius); box-shadow: var(--shadow-sm);">
+                        <h3 style="margin-bottom: 5px;"><i class="fa-solid fa-calendar-plus" style="color:var(--primary);"></i> Create Custom Task</h3>
+                        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 15px;">Search and pick multiple chapters to group them into a single Revision or Test on a specific date.</p>
+                        
+                        <div style="display: flex; gap: 10px; align-items: stretch; position: relative;">
+                            
+                            <!-- Search Input & Dropdown -->
+                            <div style="flex: 2; position: relative;">
+                                <input type="text" id="customTaskSearchInput" placeholder="Search syllabus (e.g. 'Thermodynamics')..." 
+                                       class="custom-input" style="height: 100%;">
+                                <div id="customTaskDropdown" 
+                                     style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-surface); max-height: 250px; overflow-y: auto; z-index: 50; display: none; border: 1px solid var(--border-light); border-radius: 8px; margin-top: 5px; box-shadow: var(--shadow-lg);"></div>
+                            </div>
+                            
+                            <!-- Date Picker -->
+                            <input type="date" id="customTaskDate" class="custom-input" style="flex: 1; height: 100%;">
+                            
+                            <!-- Action Buttons -->
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="primary-btn" id="btnAddCustomRevision" style="white-space: nowrap;"><i class="fa-solid fa-clock-rotate-left"></i> As Revision</button>
+                            </div>
+                        </div>
+
+                        <!-- Selected Chips Container -->
+                        <div id="selectedChaptersContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <!-- Selected chapter chips injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Unified Calendar Feed -->
+                    <div class="revisions-list">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fa-solid fa-calendar-days"></i> Your Schedule / Due Feed</h3>
+                                <p class="text-muted" style="margin: 5px 0 0 0; font-size: 0.85rem;">All automatic revisions and custom tasks sorted by Date.</p>
+                            </div>
+                            <button id="toggle-rev-history" class="secondary-btn" style="padding: 6px 15px; font-size: 13px;"><i class="fa-solid fa-clock-rotate-left"></i> View History</button>
+                        </div>
+                        
+                        <div id="calendar-feed-container" class="revisions-container">
+                            <!-- Due revisions injected here -->
+                            <div class="empty-state">Your schedule is empty! Complete chapters or create custom tasks to fill your calendar.</div>
+                        </div>
+
+                        <!-- History Section -->
+                        <div id="revisions-history-container" class="revisions-container" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 2px dashed var(--border-light);">
+                            <h4 style="margin-bottom: 15px; color: var(--text-muted);"><i class="fa-solid fa-clock"></i> Completed Revisions History</h4>
+                            <div id="rev-history-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 5: Detailed Exam Dashboard -->
+                <div id="view-exam-dashboard" class="view">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <button class="secondary-btn" onclick="switchView('dashboard')" style="padding: 6px 15px;"><i class="fa-solid fa-arrow-left"></i> Back to Complete Dashboard</button>
+                        <h3 id="exam-dashboard-title" style="margin: 0; color: var(--primary);">Exam Specific View</h3>
+                    </div>
+                    
+                    <div class="dashboard-stats" id="exam-dashboard-stats">
+                        <!-- Exam specific stats injected here -->
+                    </div>
+                    
+                    <div class="charts-container" style="margin-top:20px;">
+                        <div class="chart-card flow-chart-card" style="width: 100%;">
+                            <h3>Exam Subjects & Chapters Progress</h3>
+                            <div id="exam-progress-flow-container" class="progress-flow">
+                                <!-- Flow chart for exam subjects will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 6: Tests Section -->
+                <div id="view-tests" class="view">
+                    <!-- Advanced Custom Task Builder for Tests -->
+                    <div class="card" style="margin-bottom: 30px; background: var(--bg-surface); border: 1px solid var(--border-light); padding: 25px; border-radius: var(--radius); box-shadow: var(--shadow-sm);">
+                        <h3 style="margin-bottom: 5px;"><i class="fa-solid fa-file-circle-plus" style="color:var(--danger);"></i> Schedule Custom Test</h3>
+                        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 15px;">Search and pick multiple chapters/subjects to group them into a single Test on a specific date.</p>
+                        
+                        <div style="display: flex; gap: 10px; align-items: stretch; position: relative;">
+                            
+                            <!-- Search Input & Dropdown -->
+                            <div style="flex: 2; position: relative;">
+                                <input type="text" id="customTestSearchInput" placeholder="Search syllabus (e.g. 'Thermodynamics')..." 
+                                       class="custom-input" style="height: 100%;">
+                                <div id="customTestDropdown" 
+                                     style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-surface); max-height: 250px; overflow-y: auto; z-index: 50; display: none; border: 1px solid var(--border-light); border-radius: 8px; margin-top: 5px; box-shadow: var(--shadow-lg);"></div>
+                            </div>
+                            
+                            <!-- Date Picker -->
+                            <input type="date" id="customTestDate" class="custom-input" style="flex: 1; height: 100%;">
+                            
+                            <!-- Action Buttons -->
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="primary-btn" id="btnAddCustomTestOnly" style="white-space: nowrap; background: var(--danger); border-color: var(--danger);"><i class="fa-solid fa-file-signature"></i> Create Test</button>
+                            </div>
+                        </div>
+
+                        <!-- Selected Chips Container -->
+                        <div id="selectedTestChaptersContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <!-- Selected chapter chips injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Tests Scheduled List -->
+                    <div class="revisions-list">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fa-solid fa-clipboard-list"></i> Your Test Schedule</h3>
+                                <p class="text-muted" style="margin: 5px 0 0 0; font-size: 0.85rem;">All custom tests sorted by Date.</p>
+                            </div>
+                            <button id="toggle-test-history" class="secondary-btn" style="padding: 6px 15px; font-size: 13px;"><i class="fa-solid fa-clock-rotate-left"></i> View History</button>
+                        </div>
+                        
+                        <div id="tests-feed-container" class="revisions-container">
+                            <!-- Due tests injected here -->
+                            <div class="empty-state">No upcoming tests! Create custom tests to evaluate your preparation.</div>
+                        </div>
+
+                        <!-- Test History Section -->
+                        <div id="tests-history-container" class="revisions-container" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 2px dashed var(--border-light);">
+                            <h4 style="margin-bottom: 15px; color: var(--text-muted);"><i class="fa-solid fa-clock"></i> Completed Tests History</h4>
+                            <div id="test-history-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Adding New Syllabus Item -->
+    <div id="add-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Add New Item</h3>
+                <button id="close-modal" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="new-item-name" class="custom-input" placeholder="Enter name...">
+            </div>
+            <div class="modal-footer">
+                <button id="save-item-btn" class="primary-btn w-full">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Logic -->
+    <script src="script.js"></script>
+</body>
+</html>
