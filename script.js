@@ -98,7 +98,7 @@ function init() {
 
 function applyGlobalSettings() {
     // These settings are global (per browser, not per user for simplicity)
-    const savedThemeStyle = localStorage.getItem('app_theme_style') || 'light';
+    const savedThemeStyle = localStorage.getItem('app_theme_style') || 'auto';
     const savedColor = localStorage.getItem('app_color');
     
     applyThemeStyle(savedThemeStyle);
@@ -110,6 +110,13 @@ function applyGlobalSettings() {
     }
 
     loadTelegramSettings(); // Load any saved telegram credentials
+    
+    // Listen for system theme changes if set to auto
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (localStorage.getItem('app_theme_style') === 'auto') {
+            applyThemeStyle('auto');
+        }
+    });
 }
 
 // ==========================================
@@ -232,11 +239,23 @@ function applyThemeStyle(styleCode) {
     document.documentElement.classList.remove('dark-mode', 'theme-chatgpt');
     if (accentColorRow) accentColorRow.style.display = 'flex'; // Default show color picker
     
-    if (styleCode === 'dark') {
+    let activeStyle = styleCode;
+    if (styleCode === 'auto') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        activeStyle = prefersDark ? 'dark' : 'light';
+    }
+
+    if (activeStyle === 'dark') {
         document.documentElement.classList.add('dark-mode');
     } else if (styleCode === 'chatgpt') {
         document.documentElement.classList.add('theme-chatgpt');
-        if (accentColorRow) accentColorRow.style.display = 'none'; // Hide color picker, theme sets it to B&W
+        if (accentColorRow) accentColorRow.style.display = 'none';
+        
+        // Handle ChatGPT's internal auto dark mode if the base is chatgpt
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+            document.documentElement.classList.add('dark-mode');
+        }
     }
 }
 
@@ -260,8 +279,10 @@ const tgChatIdInput = document.getElementById('tg-chat-id');
 const tgSyncBtn = document.getElementById('tg-sync-btn');
 
 function loadTelegramSettings() {
-    if(tgTokenInput) tgTokenInput.value = localStorage.getItem('tg_token') || '';
-    if(tgChatIdInput) tgChatIdInput.value = localStorage.getItem('tg_chat_id') || '';
+    const token = localStorage.getItem('tg_token') || '';
+    const chatId = localStorage.getItem('tg_chat_id') || '';
+    if(tgTokenInput) tgTokenInput.value = token;
+    if(tgChatIdInput) tgChatIdInput.value = chatId;
 }
 
 if(tgSyncBtn) {
@@ -333,6 +354,45 @@ if(exportBtn) {
     });
 }
 
+window.importFileSecure = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            const usernames = Object.keys(importedData);
+            if (usernames.length === 0) {
+                alert("This backup file is empty.");
+                return;
+            }
+
+            const targetUsername = usernames[0];
+            const targetUser = importedData[targetUsername];
+
+            if (targetUser && targetUser.profile && targetUser.profile.password) {
+                const pass = prompt(`Enter password for "${targetUsername}" to restore and login:`);
+                if (pass === targetUser.profile.password) {
+                    appData = importedData;
+                    saveData();
+                    localStorage.setItem('currentUser', targetUsername);
+                    alert("Data restored and logged in successfully!");
+                    checkAuth();
+                } else if (pass !== null) {
+                    alert("Wrong password. Restore cancelled.");
+                }
+            } else {
+                alert("Invalid backup format: No user profile found.");
+            }
+        } catch (err) {
+            alert("Error reading file: " + err.message);
+        }
+        event.target.value = '';
+    };
+    reader.readAsText(file);
+}
+
 if(importBtn && importFile) {
     importBtn.addEventListener('click', () => {
         importFile.click();
@@ -346,12 +406,13 @@ if(importBtn && importFile) {
         reader.onload = function(event) {
             try {
                 const importedData = JSON.parse(event.target.result);
-                // Basic validation
                 if (typeof importedData === 'object') {
                     appData = importedData;
                     saveData();
                     alert("Data restored successfully!");
-                    checkAuth(); // Reload UI based on possibly new users or current user
+                    checkAuth();
+                    const activeNav = document.querySelector('.nav-btn.active');
+                    if (activeNav) switchView(activeNav.dataset.view);
                 } else {
                     alert("Invalid backup file format.");
                 }
@@ -360,8 +421,6 @@ if(importBtn && importFile) {
             }
         };
         reader.readAsText(file);
-        
-        // Reset input so the same file can be selected again if needed
         importFile.value = '';
     });
 }
@@ -788,7 +847,9 @@ function renderMindMap() {
                 const isHidden = childrenContainer.style.display === 'none';
                 childrenContainer.style.display = isHidden ? 'flex' : 'none';
                 node.style.opacity = isHidden ? '1' : '0.6';
-                drawMindMapConnections(container);
+                
+                // Add a small delay to ensure DOM reflow is complete before redrawing connections
+                setTimeout(() => drawMindMapConnections(container), 0);
             }
         });
     });
@@ -1025,10 +1086,25 @@ function prepareAndPrint(multiPage) {
 
     // Give browser time to reflow DOM
     setTimeout(() => {
+        // Apply a specific point size for A1/A3 feel on single page
+        const style = document.createElement('style');
+        style.id = 'print-size-fix';
+        style.innerHTML = `
+            @page { 
+                size: 23.4in 33.1in; /* A1 Size */
+                margin: 0; 
+            }
+            body { zoom: 1; }
+        `;
+        document.head.appendChild(style);
+
         window.print();
         
         // Restore DOM after print dialog is closed
         document.body.classList.remove('print-mode');
+        const s = document.getElementById('print-size-fix');
+        if(s) s.remove();
+        
         if(multiPage) {
             element.innerHTML = oldHTML;
             element.className = oldClass;
@@ -1856,11 +1932,27 @@ function getUnifiedCalendarList() {
                        tagText: index === 0 ? 'Day 3 Auto Rev' : (index === 1 ? 'Day 5 Auto Rev' : 'Day 10 Auto Rev'),
                        tagClass: 'auto-rev',
                        type: 'auto_revision',
-                       revIndex: index,
-                       isDue: revDateStr <= today
-                   });
-               }
-            });
+                        revIndex: index,
+                        isDue: revDateStr <= today,
+                        isCompleted: index < (node.revisionsDone || 0)
+                    });
+                } else {
+                    // It's already completed, but we still want it in unified list for history
+                    events.push({
+                        eventId: node.id + '_' + index,
+                        nodeId: node.id,
+                        title: node.name,
+                        subtitle: pathNames.join(' > '),
+                        dateStr: revDateStr,
+                        tagText: index === 0 ? 'Day 3 Auto Rev' : (index === 1 ? 'Day 5 Auto Rev' : 'Day 10 Auto Rev'),
+                        tagClass: 'auto-rev',
+                        type: 'auto_revision',
+                        revIndex: index,
+                        isDue: revDateStr <= today,
+                        isCompleted: true
+                    });
+                }
+             });
         }
         if (node.children) node.children.forEach(c => traverse(c, currentPath));
     }
@@ -1878,7 +1970,22 @@ function getUnifiedCalendarList() {
                 tagClass: ct.type === 'test' ? 'test-tag' : 'custom-rev-tag',
                 type: 'custom_task',
                 taskRef: ct,
-                isDue: ct.dateStr <= today
+                isDue: ct.dateStr <= today,
+                isCompleted: !!ct.completed
+            });
+        } else {
+            // Already completed custom task
+            events.push({
+                eventId: ct.id,
+                title: ct.targets.length > 1 ? `Custom ${ct.type === 'test' ? 'Test' : 'Revision'} (${ct.targets.length} Topics)` : ct.targets[0].name,
+                subtitle: ct.targets.map(t => t.name).join(', '),
+                dateStr: ct.dateStr,
+                tagText: ct.type === 'test' ? 'Custom Test' : 'Custom Rev',
+                tagClass: ct.type === 'test' ? 'test-tag' : 'custom-rev-tag',
+                type: 'custom_task',
+                taskRef: ct,
+                isDue: ct.dateStr <= today,
+                isCompleted: true
             });
         }
     });
@@ -2168,6 +2275,8 @@ window.markRevisionDone = function(nodeId, revIndex) {
         target.revisionsDone = revIndex + 1;
         saveData();
         updateNotifications();
+        renderRevisionsList();
+        renderHistoryList('revisions', 'rev-history-list');
     }
 }
 
